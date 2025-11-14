@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 阅读器 - 带文件列表</title>
+    <style>
+        /* 保持原有的CSS样式不变 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .upload-section {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .file-list-section {
+            padding: 20px 0;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .file-item:hover {
+            background: #e8f4fc;
+            border-color: #3498db;
+            transform: translateX(5px);
+        }
+
+        .file-item.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .file-icon {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .file-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }
+
+        .file-item.active .file-size {
+            color: #e0e0e0;
+        }
+
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .upload-area:hover {
+            background: #e8f4fc;
+            border-color: #2980b9;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .file-types {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .viewer-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .pdf-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f1f2f6;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .pdf-container {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: auto;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .pdf-viewer {
+            max-width: 100%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .instructions {
+            background: #e8f4fc;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .instructions ul {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 15px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            border-top: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(180deg);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+            
+            .pdf-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1> </h1>
+            <p class="subtitle"> </p>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📄</div>
+                        <p class="upload-text">添加PDF文件</p>
+                        <p class="file-types">支持 .pdf 格式</p>
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" accept=".pdf">
+                    <button class="btn btn-full" id="selectFileBtn">选择PDF文件</button>
+                </div>
+
+                <div class="file-list-section">
+                    <div class="section-title">
+                        当前目录PDF文件
+                        <button class="refresh-btn" id="refreshBtn" title="刷新文件列表">↻</button>
+                    </div>
+                    <ul class="file-list" id="fileList">
+                        <!-- 手动配置您的PDF文件 -->
+                        <li class="file-item" data-filename="教你炒股票108课-原文-2023.8.13.pdf" data-size="8366455">
+                            <span class="file-icon">📄</span>
+                            <span class="file-name">教你炒股票108课-原文-2023.8.13.pdf</span>
+                            <span class="file-size">7.98 MB</span>
+                        </li>
+                        <li class="file-item" data-filename="股票课程.pdf" data-size="19028800">
+                            <span class="file-icon">📄</span>
+                            <span class="file-name">股票课程.pdf</span>
+                            <span class="file-size">18.14 MB</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="instructions">
+                    <h3>使用说明：</h3>
+                    <ul>
+                        <li>点击左侧文件列表中的PDF文件进行查看</li>
+                        <li>点击"选择PDF文件"添加新的PDF文件</li>
+                        <li>支持拖放PDF文件到虚线区域</li>
+                        <li>您的文件仅在浏览器中处理，不会上传到服务器</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="viewer-section" id="viewerSection">
+                    <div class="pdf-controls">
+                        <div class="file-info" id="fileInfo">请从左侧选择PDF文件</div>
+                        <div>
+                            <button class="btn btn-secondary" id="downloadBtn" style="display: none;">下载PDF</button>
+                        </div>
+                    </div>
+                    <div class="pdf-container">
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-icon">📚</div>
+                            <h3>尚未选择PDF文件</h3>
+                            <p>请从左侧文件列表中选择一个PDF文件，或添加新的PDF文件</p>
+                        </div>
+                        <iframe id="pdfViewer" class="pdf-viewer" width="100%" height="100%" style="display: none;"></iframe>
+                        <div id="fallbackMessage" style="display: none; text-align: center; padding: 40px;">
+                            <h3>无法预览PDF文件</h3>
+                            <p>您的浏览器可能不支持PDF预览功能。</p>
+                            <p>请尝试使用 <a href="#" id="downloadLink">下载PDF文件</a> 到本地查看。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2023 PDF阅读器 | 本地文件处理，保护您的隐私</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileInput');
+            const selectFileBtn = document.getElementById('selectFileBtn');
+            const uploadArea = document.getElementById('uploadArea');
+            const fileList = document.getElementById('fileList');
+            const pdfViewer = document.getElementById('pdfViewer');
+            const fileInfo = document.getElementById('fileInfo');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const downloadLink = document.getElementById('downloadLink');
+            const fallbackMessage = document.getElementById('fallbackMessage');
+            const emptyState = document.getElementById('emptyState');
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            // 存储已加载的文件
+            let loadedFiles = new Map();
+            let currentFile = null;
+
+            // 初始化 - 为现有的文件列表项添加点击事件
+            initializeFileList();
+
+            // 点击选择文件按钮
+            selectFileBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // 点击上传区域
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // 拖放功能
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.style.background = '#e1f5fe';
+                uploadArea.style.borderColor = '#0288d1';
+            });
+
+            uploadArea.addEventListener('dragleave', function() {
+                uploadArea.style.background = '#f8f9fa';
+                uploadArea.style.borderColor = '#3498db';
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.style.background = '#f8f9fa';
+                uploadArea.style.borderColor = '#3498db';
+                
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            // 文件选择变化
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length) {
+                    handleFile(fileInput.files[0]);
+                }
+            });
+
+            // 刷新文件列表
+            refreshBtn.addEventListener('click', function() {
+                // 在实际环境中，这里可以重新扫描目录
+                alert('文件列表已刷新');
+            });
+
+            // 下载文件
+            downloadBtn.addEventListener('click', function() {
+                if (currentFile && currentFile.url) {
+                    const a = document.createElement('a');
+                    a.href = currentFile.url;
+                    a.download = currentFile.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            });
+
+            // 初始化文件列表点击事件
+            function initializeFileList() {
+                const fileItems = fileList.querySelectorAll('.file-item');
+                fileItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        // 移除所有active类
+                        document.querySelectorAll('.file-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        
+                        // 添加active类到当前项
+                        item.classList.add('active');
+                        
+                        // 获取文件信息
+                        const filename = item.getAttribute('data-filename');
+                        const size = parseInt(item.getAttribute('data-size'));
+                        
+                        // 打开文件
+                        openFile(filename, size);
+                    });
+                });
+            }
+
+            // 打开文件
+            function openFile(filename, size) {
+                fileInfo.textContent = `文件: ${filename} (${formatFileSize(size)})`;
+                emptyState.style.display = 'none';
+                pdfViewer.style.display = 'block';
+                downloadBtn.style.display = 'inline-block';
+                
+                // 直接使用相对路径
+                const fileURL = filename;
+                pdfViewer.src = fileURL;
+                
+                // 设置下载链接
+                downloadLink.href = fileURL;
+                downloadLink.download = filename;
+                
+                // 存储当前文件信息
+                currentFile = {
+                    name: filename,
+                    size: size,
+                    url: fileURL
+                };
+                
+                // 检查PDF是否加载成功
+                pdfViewer.onload = function() {
+                    fallbackMessage.style.display = 'none';
+                };
+                
+                pdfViewer.onerror = function() {
+                    fallbackMessage.style.display = 'block';
+                    pdfViewer.style.display = 'none';
+                };
+            }
+
+            // 处理选择的文件
+            function handleFile(file) {
+                if (file.type !== 'application/pdf') {
+                    alert('请选择PDF文件！');
+                    return;
+                }
+
+                // 创建对象URL
+                const fileURL = URL.createObjectURL(file);
+                
+                // 添加到文件列表
+                addFileToList(file.name, file.size, fileURL);
+                
+                // 打开文件
+                openLocalFile(file.name, file.size, fileURL);
+            }
+
+            // 添加到文件列表
+            function addFileToList(name, size, url) {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.setAttribute('data-filename', name);
+                li.setAttribute('data-size', size);
+                li.innerHTML = `
+                    <span class="file-icon">📄</span>
+                    <span class="file-name">${name}</span>
+                    <span class="file-size">${formatFileSize(size)}</span>
+                `;
+                
+                li.addEventListener('click', function() {
+                    document.querySelectorAll('.file-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    li.classList.add('active');
+                    openLocalFile(name, size, url);
+                });
+                
+                fileList.insertBefore(li, fileList.firstChild);
+                
+                // 存储文件引用
+                loadedFiles.set(name, { name, size, url });
+            }
+
+            // 打开本地文件
+            function openLocalFile(name, size, url) {
+                fileInfo.textContent = `文件: ${name} (${formatFileSize(size)})`;
+                emptyState.style.display = 'none';
+                pdfViewer.style.display = 'block';
+                downloadBtn.style.display = 'inline-block';
+                
+                pdfViewer.src = url;
+                downloadLink.href = url;
+                downloadLink.download = name;
+                
+                currentFile = { name, size, url };
+                
+                pdfViewer.onload = function() {
+                    fallbackMessage.style.display = 'none';
+                };
+                
+                pdfViewer.onerror = function() {
+                    fallbackMessage.style.display = 'block';
+                    pdfViewer.style.display = 'none';
+                };
+            }
+
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (!bytes || bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        });
+    </script>
+</body>
+</html>
